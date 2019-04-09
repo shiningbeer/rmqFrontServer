@@ -1,0 +1,6 @@
+{
+    "python.linting.enabled": false,
+    "powermode.enabled": true,
+    "powermode.presets": "flames",
+    "powermode.shakeIntensity": 0,
+}

@@ -1,0 +1,34 @@
+{
+  "name": "centsev",
+  "version": "1.0.0",
+  "description": "cent sever",
+  "main": "index.js",
+  "scripts": {
+    "test": "test",
+    "start": "node ./src/server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": ".git"
+  },
+  "keywords": [
+    "cent",
+    "server"
+  ],
+  "author": "tommy",
+  "license": "ISC",
+  "dependencies": {
+    "admin-mongo": "0.0.23",
+    "body-parser": "^1.18.2",
+    "cookie-parser": "^1.4.3",
+    "elasticsearch": "^15.1.1",
+    "express": "^4.16.2",
+    "jwt-simple": "^0.5.1",
+    "log4js": "^3.0.6",
+    "moment": "^2.22.1",
+    "mongodb": "^3.0.2",
+    "multer": "^1.3.0",
+    "node-fetch": "^2.0.0",
+    "request": "^2.83.0"
+  }
+}
