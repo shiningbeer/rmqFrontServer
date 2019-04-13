@@ -14,71 +14,81 @@ adao.connect("mongodb://localhost:27017", 'cent', async (err) => {
     setInterval(async () => {
         var startTasks = await sdao.find('task', { realTaskCreated: false, realTaskCreating: false })
         for (var task of startTasks) {
-            const { _id: taskId, type, stage } = task
+            const { _id: taskId, type, stage,port,selectedTargets,paused} = task
             //first to mark the task is udergoing creating real task
             await sdao.update('task', { _id: taskId }, { realTaskCreating: true })
 
             if (type == 'plugin') {
                 //take out all the targets and create the progress table
                 var totoalcount = 0
-                for (var target of task.selectedTargets) {
+                for (var target of selectedTargets) {
                     var re = await sdao.findone('targetI', { _id: target._id })
                     var lines_no = 0
                     for (var item of re.ipRange) {
                         lines_no = lines_no + 1
-                        var doc = { ip: item, port: task.port }
-                        await sdao_ipv4.insert(task._id.toString(), doc)
+                        var doc = { ip: item, port }
+                        await sdao_ipv4.insert(taskId.toString(), doc)
                     }
                     totoalcount = totoalcount + lines_no
 
                 }
                 //after the progress table created ,then to create the real task
-                await sdao_ipv4.insert('taskInfo', { name: task._id.toString(), port: task.port, complete: false, paused: true, allSent: false, progress: 0, count: totoalcount })
+                await sdao_ipv4.insert('taskInfo', { name: taskId.toString(), port, complete: false, paused: true, allSent: false, progress: 0, count: totoalcount })
             }
 
             if (type == 'port') {
                 //take out all the targets and create the progress table
                 var totoalcount = 0
-                for (var target of task.selectedTargets) {
+                for (var target of selectedTargets) {
                     var re = await sdao.findone('target', { _id: target._id })
                     var lines_no = 0
                     for (var item of re.ipRange) {
                         lines_no = lines_no + 1
-                        var doc = { ip: item, port: task.port }
-                        await sdao_cidr.insert(task._id.toString(), doc)
+                        var doc = { ip: item, port }
+                        await sdao_cidr.insert(taskId.toString(), doc)
                     }
                     totoalcount = totoalcount + lines_no
 
                 }
                 //create the real task
-                await sdao_cidr.insert('taskInfo', { name: task._id.toString(), port: task.port, complete: false, paused: task.paused, allSent: false, progress: 0, count: totoalcount })
+                await sdao_cidr.insert('taskInfo', { name: taskId.toString(), port, complete: false, paused, allSent: false, progress: 0, count: totoalcount })
             }
 
             if (type == 'combine') {
                 if (stage == 'port') {
                     //take out all the targets and create the progress table
                     var totoalcount = 0
-                    for (var target of task.selectedTargets) {
+                    for (var target of selectedTargets) {
                         var re = await sdao.findone('target', { _id: target._id })
                         var lines_no = 0
                         for (var item of re.ipRange) {
                             lines_no = lines_no + 1
-                            var doc = { ip: item, port: task.port }
-                            await sdao_cidr.insert(task._id.toString(), doc)
+                            var doc = { ip: item, port: port }
+                            await sdao_cidr.insert(taskId.toString(), doc)
                         }
                         totoalcount = totoalcount + lines_no
 
                     }
                     //create the real task
-                    await sdao_cidr.insert('taskInfo', { name: task._id.toString(), port: task.port, complete: false, paused: task.paused, allSent: false, progress: 0, count: totoalcount })
+                    await sdao_cidr.insert('taskInfo', { name: taskId.toString(), port, complete: false, paused, allSent: false, progress: 0, count: totoalcount })
                 }
                 if (stage == 'plugin') {
+                    //todo:
+                    let listOfResults = await sdao_cidr.find(taskId.toString(), { 'result': { '$exists': true } })
+                    var totoalcount=0
+                    for (var item of listOfResults){
+                        for (var ip of item){
+                            var doc={ip,port}
+                            totoalcount=totoalcount+1
+                        }
+                    }
+
                     //collect the result of cidr task of this task as a ipv4 target
                     //then do the same as plugin task
                 }
             }
             //mark the task that the real task is created
-            await sdao.update('task', { _id: task._id }, { realTaskCreating: false, realTaskCreated: true })
+            await sdao.update('task', { _id: taskId }, { realTaskCreating: false, realTaskCreated: true })
         }
     }, 1000)
 
@@ -86,7 +96,7 @@ adao.connect("mongodb://localhost:27017", 'cent', async (err) => {
     setInterval(async () => {
         var deletedTasks = await sdao.find('task', { deleted: true })
         for (var task of deletedTasks) {
-            var taskId = task._id
+            const {_id:taskId}=task
             await sdao_cidr.delete('taskInfo', { name: taskId.toString() })
             await sdao_cidr.dropCol(taskId.toString())
             await sdao_ipv4.delete('taskInfo', { name: taskId.toString() })
@@ -135,10 +145,19 @@ adao.connect("mongodb://localhost:27017", 'cent', async (err) => {
                     percent = (percent + 0) / 2
                     var nowStage = stage
                     if (count == progress) nowStage = 'plugin'
+                    //if the task completes its port stage, the percentage should be 50%, change the stage to plugin and put realTaskCreated as false
+                    //so the task will be created realtask for the plugin stage
                     await sdao.update('task', { _id: taskId }, { progress: percent, stage: nowStage, realTaskCreated: false })
                 }
                 if (stage == 'plugin') {
                     //do the most same as plugin task
+                    var info = sdao_ipv4.findone('taskInfo', { name: taskId.toString() })
+                    const { count, progress } = info
+                    var percent = parseFloat(progress) / parseFloat(count) * 100
+                    percent = (percent + 100) / 2 //all the same except this line , because the combine task must consider the port stage process
+                    var complete = false
+                    if (count == progress) complete = true
+                    await sdao.update('task', { _id: taskId }, { progress: percent, complete })
                 }
             }
         }
@@ -153,6 +172,12 @@ adao.connect("mongodb://localhost:27017", 'cent', async (err) => {
                 let results = []
                 for (var item of listOfResults)
                     results.push(...item)
+                //todo:
+                //save the results to file
+
+            }
+            if (type == 'plugin' || type == 'combine') {
+                //todo:
 
             }
 

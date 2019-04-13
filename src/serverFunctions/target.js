@@ -17,6 +17,7 @@ add: async (req, res) => {
     var lines = []
     try {
       var read = fs.readFileSync(uploadDir + file.originalname, 'utf-8')
+      fs.closeSync()
 
 
     }
@@ -27,6 +28,7 @@ add: async (req, res) => {
     lines = read.split('\n')
     var ipRange=[]
     for (var line of lines) {
+      // var myregE=new RegExp('^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$')
       if (line == '') continue
       ipRange.push(line)
 
