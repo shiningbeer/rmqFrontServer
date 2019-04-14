@@ -14,7 +14,7 @@ adao.connect("mongodb://localhost:27017", 'cent', async (err) => {
     setInterval(async () => {
         var startTasks = await sdao.find('task', { realTaskCreated: false, realTaskCreating: false })
         for (var task of startTasks) {
-            const { _id: taskId, type, stage,port,selectedTargets,paused} = task
+            const { _id: taskId, type, stage, port, selectedTargets, paused } = task
             //first to mark the task is udergoing creating real task
             await sdao.update('task', { _id: taskId }, { realTaskCreating: true })
 
@@ -75,11 +75,11 @@ adao.connect("mongodb://localhost:27017", 'cent', async (err) => {
                 if (stage == 'plugin') {
                     //todo:
                     let listOfResults = await sdao_cidr.find(taskId.toString(), { 'result': { '$exists': true } })
-                    var totoalcount=0
-                    for (var item of listOfResults){
-                        for (var ip of item){
-                            var doc={ip,port}
-                            totoalcount=totoalcount+1
+                    var totoalcount = 0
+                    for (var item of listOfResults) {
+                        for (var ip of item) {
+                            var doc = { ip, port }
+                            totoalcount = totoalcount + 1
                         }
                     }
 
@@ -96,7 +96,7 @@ adao.connect("mongodb://localhost:27017", 'cent', async (err) => {
     setInterval(async () => {
         var deletedTasks = await sdao.find('task', { deleted: true })
         for (var task of deletedTasks) {
-            const {_id:taskId}=task
+            const { _id: taskId } = task
             await sdao_cidr.delete('taskInfo', { name: taskId.toString() })
             await sdao_cidr.dropCol(taskId.toString())
             await sdao_ipv4.delete('taskInfo', { name: taskId.toString() })
@@ -169,17 +169,29 @@ adao.connect("mongodb://localhost:27017", 'cent', async (err) => {
             var { _id: taskId, type } = task
             if (type == 'port') {
                 let listOfResults = await sdao_cidr.find(taskId.toString(), { 'result': { '$exists': true } })
-                let results = []
+                var fs = require('fs')
+                fs.writeFileSync('./results/' + taskId.toString(), '')
                 for (var item of listOfResults)
-                    results.push(...item)
-                //todo:
-                //save the results to file
+                    for (var line of item)
+                        fs.writeFileSync('./results/' + taskId.toString(),line+'\n',{flag:'as'}) 
+                fs.closeSync()
 
             }
             if (type == 'plugin' || type == 'combine') {
-                //todo:
+                let listOfResults = await sdao_cidr.find(taskId.toString(), { 'result': { '$exists': true } })
+                var fs = require('fs')
+                fs.writeFileSync('./results/' + taskId.toString(), '')
+                for (var item of listOfResults)
+                    if(item.result!=null && item.result!={}){
+                        delete item._id
+                        delete imte.sent
+                        var line =JSON.stringify(item)
+                        fs.writeFileSync('./results/' + taskId.toString(),line+'\n',{flag:'as'}) 
+                    }
+                fs.closeSync()
 
             }
+            await sdao.update('task',{_id:taskId},{resultCollected:true})
 
         }
     }, 1000)
