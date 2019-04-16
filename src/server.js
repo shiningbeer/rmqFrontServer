@@ -75,6 +75,14 @@ app.post('/plugin/delete', plugin.delete)
 app.post('/plugin/update', plugin.update)
 app.post('/plugin/get', plugin.get)
 
+//download
+app.post('/results/download', (req,res)=>{
+    const {id}=req.body
+    console.log(id)
+    res.download('./results/'+id)
+})
+
+
 
 
 //start server at localhost on the designated port
